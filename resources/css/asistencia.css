@@ -1,0 +1,181 @@
+/* =========================================================
+   SIS.ASISTENCIA - IDENTIDAD VISUAL
+========================================================= */
+
+
+/* Barra superior 
+.main-header .navbar-custom {
+    background: linear-gradient(
+        135deg,
+        #075985 0%,
+        #087f9f 50%,
+        #0891b2 100%
+    ) !important;
+} */
+
+/* =========================================================
+BARRA SUPERIOR
+========================================================= */
+
+.main-header .navbar-custom {
+    background: linear-gradient(
+        135deg,
+        #075985 0%,
+        #087f9f 50%,
+        #0891b2 100%
+    ) !important;
+
+    border: none !important;
+}
+
+/* =========================================================
+MARCA SIS.ASISTENCIA
+========================================================= */
+
+.asistencia-brand {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    color: #ffffff !important;
+    text-decoration: none !important;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+/* Ícono */
+
+.asistencia-brand .brand-icon {
+    width: 32px;
+    height: 32px;
+    margin-right: 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.16);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+
+/* Texto */
+
+.asistencia-brand .brand-text {
+    color: #ffffff !important;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+
+/* Hover */
+
+.asistencia-brand:hover {
+    color: #ffffff !important;
+    text-decoration: none !important;
+}
+
+
+.asistencia-brand:hover .brand-icon {
+    background: rgba(255, 255, 255, 0.24);
+}
+/* =========================================================
+MARCA / SIS.ASISTENCIA
+========================================================= 
+
+.main-header .navbar-brand {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+.main-header .navbar-brand:hover {
+    color: #ffffff !important;
+}
+
+
+/* Ícono */
+.main-header .navbar-brand i {
+    color: #ffffff;
+    font-size: 17px;
+}
+
+*/
+
+/* =========================================================
+   ELEMENTOS DEL NAVBAR
+========================================================= */
+
+.main-header .navbar-custom .nav-link {
+    color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.main-header .navbar-custom .nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+
+/* Botón hamburguesa */
+.main-header .navbar-custom .navbar-toggler {
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.main-sidebar {
+    box-shadow: 3px 0 12px rgba(15, 23, 42, 0.08);
+}
+
+
+/* Marca del sidebar */
+.main-sidebar .brand-link {
+    background: linear-gradient(
+        135deg,
+        #075985 0%,
+        #087f9f 50%,
+        #0891b2 100%
+    ) !important;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.main-sidebar .brand-link .brand-text {
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   CONTENIDO
+========================================================= */
+
+.content-wrapper {
+    background-color: #f8fafc;
+}
+
+
+/* =========================================================
+   DASHBOARD / TITULOS
+========================================================= */
+
+.content-header h1,
+.content-header h3 {
+    color: #0f172a;
+}
+
+
+/* =========================================================
+   BOTONES PRINCIPALES
+========================================================= */
+
+.btn-primary {
+    background-color: #0891b2 !important;
+    border-color: #0891b2 !important;
+}
+
+.btn-primary:hover {
+    background-color: #075985 !important;
+    border-color: #075985 !important;
+}
