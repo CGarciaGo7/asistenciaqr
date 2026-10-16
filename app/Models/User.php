@@ -23,6 +23,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'trabajador_id',
+        'username',
+        'debe_cambiar_password',
     ];
 
     /**
@@ -35,6 +38,14 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+
+    /** Trabajador asociado a la cuenta */
+    
+    public function trabajador()
+    {
+        return $this->belongsTo(Trabajador::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -45,6 +56,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'debe_cambiar_password' => 'boolean',
         ];
     }
 }

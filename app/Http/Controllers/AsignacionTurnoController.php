@@ -42,15 +42,22 @@ public function index(Request $request)
         : false;
 
     if ($sucursal) {
+       
         $trabajadores = Trabajador::with('cargo')
-                ->where('sucursal_id', $sucursal->id)
-                ->where('estado', 1)
-                ->whereHas('cargo', function ($query) {
-                    $query->whereRaw('UPPER(TRIM(nombre)) = ?', ['TECNICO VENDEDOR']);
-                })
-                ->orderBy('primer_apellido')
-                ->orderBy('primer_nombre')
-                ->get();
+            ->where('sucursal_id', $sucursal->id)
+            ->where('estado', 1)
+            ->whereHas('cargo', function ($query) {
+                $query->whereIn(
+                    \Illuminate\Support\Facades\DB::raw('UPPER(TRIM(nombre))'),
+                    [
+                        'TECNICO VENDEDOR',
+                        'ENCARGADO DE LOCAL',
+                    ]
+                );
+            })
+            ->orderBy('primer_apellido')
+            ->orderBy('primer_nombre')
+            ->get();
 
         // El método auxiliar ya devuelve una colección filtrada.
         $horarios = $this->horariosDisponiblesParaSucursal($sucursal);
@@ -166,11 +173,14 @@ $asignacionesExistentes = AsignacionTurno::where(
         ->where('sucursal_id', $sucursal->id)
         ->where('estado', 1)
         ->whereHas('cargo', function ($query) {
-            $query->whereRaw(
-                'UPPER(TRIM(nombre)) = ?',
-                ['TECNICO VENDEDOR']
-            );
-        })
+    $query->whereIn(
+        DB::raw('UPPER(TRIM(nombre))'),
+        [
+            'TECNICO VENDEDOR',
+            'ENCARGADO DE LOCAL',
+        ]
+    );
+})
         ->orderBy('primer_apellido')
         ->orderBy('primer_nombre')
         ->get();
@@ -291,14 +301,20 @@ $asignacionesExistentes = AsignacionTurno::where(
                     ]);
                 }
 
-                if ($descansa !== null && !$this->esHorarioEspecial($horario)) {
+                if (
+                    $descansa !== null
+                    && !$this->esHorarioEspecial($horario)
+                ) {
                     throw ValidationException::withMessages([
                         'asignaciones' =>
                             'Cuando una técnica descansa en Santa Rosa 2, la otra debe trabajar de 08:00 a 20:00.',
                     ]);
                 }
 
-                if ($descansa === null && $this->esHorarioEspecial($horario)) {
+                if (
+                    $descansa === null
+                    && $this->esHorarioEspecial($horario)
+                ) {
                     throw ValidationException::withMessages([
                         'asignaciones' =>
                             'El turno de 08:00 a 20:00 solo se utiliza cuando la otra técnica descansa.',
@@ -307,21 +323,15 @@ $asignacionesExistentes = AsignacionTurno::where(
             }
 
             if ($descansa === null) {
-                // Deben existir exactamente dos técnicas trabajando.
-                if (count($activosDelDia) !== 2) {
-                    throw ValidationException::withMessages([
-                        'asignaciones' =>
-                            'En Santa Rosa 2, los días normales deben tener exactamente dos técnicas trabajando.',
-                    ]);
-                }
-
                 $tipos = array_map(
-                    fn ($horario) => $this->clasificarHorario($horario, $sucursal),
+                    fn ($horario) => $this->clasificarHorario(
+                        $horario,
+                        $sucursal
+                    ),
                     $activosDelDia
                 );
 
-                // Comprobar que los dos horarios se hayan clasificado.
-                if (in_array(null, $tipos, true)) {
+                if (in_array('invalido', $tipos, true)) {
                     throw ValidationException::withMessages([
                         'asignaciones' =>
                             'Uno de los horarios de Santa Rosa 2 no se reconoce como mañana o tarde. Revisa las horas configuradas en el módulo Horarios.',
@@ -340,38 +350,54 @@ $asignacionesExistentes = AsignacionTurno::where(
                     ]);
                 }
             }
+
             continue;
         }
 
-        $tipos = array_map(
-            fn ($horario) => $this->clasificarHorario($horario, $sucursal),
+        // Clasificar los horarios de los trabajadores activos.
+        $tiposClasificados = array_map(
+            fn ($horario) => $this->clasificarHorario(
+                $horario,
+                $sucursal
+            ),
             $activosDelDia
         );
 
-        $tipos = array_map(
-            fn ($horario) => $this->clasificarHorario($horario, $sucursal),
-            $activosDelDia
-        );
+        // Comprobar que todos los horarios sean reconocidos.
+        if (in_array('invalido', $tiposClasificados, true)) {
+            throw ValidationException::withMessages([
+                'asignaciones' =>
+                    'Hay un horario que no coincide con las reglas de la sucursal para el '
+                    . Carbon::parse($fecha)->format('d/m/Y')
+                    . '. Revisa las horas de entrada y salida configuradas.',
+            ]);
+        }
 
-        $tipos = array_count_values($tipos);
+        // Contar cuántos trabajadores tienen cada tipo de turno.
+        $tipos = array_count_values($tiposClasificados);
 
         $esperado = $this->distribucionEsperada(
             $cantidadTrabajadores,
             $descansa !== null
         );
 
-        // Ordenar las claves para comparar únicamente la distribución.
+        // Ordenar las claves antes de comparar las distribuciones.
         ksort($tipos);
         ksort($esperado);
 
-        if ($tipos !== $esperado) {
+        if ($tipos != $esperado) {
             throw ValidationException::withMessages([
                 'asignaciones' =>
-                    'La distribución de turnos no cumple las reglas del establecimiento para el ' .
-                    Carbon::parse($fecha)->format('d/m/Y') .
-                    '. Revisa los turnos de mañana, intermedio y tarde.',
+                    'La distribución de turnos no cumple las reglas del establecimiento para el '
+                    . Carbon::parse($fecha)->format('d/m/Y')
+                    . '. Distribución detectada: '
+                    . json_encode($tipos, JSON_UNESCAPED_UNICODE)
+                    . '. Distribución esperada: '
+                    . json_encode($esperado, JSON_UNESCAPED_UNICODE)
+                    . '. Revisa los turnos de mañana, intermedio y tarde.',
             ]);
         }
+
         // Verificar apertura y cierre efectivos.
         $horaApertura = collect($activosDelDia)
             ->map(fn ($horario) => substr((string) $horario->hora_ingreso, 0, 5))
@@ -452,7 +478,6 @@ DB::transaction(function () use (
     }
 });
 
-
     return redirect()
         ->route('asignacion-turnos.consulta', [
             'sucursal_id' => $sucursal->id,
@@ -462,9 +487,7 @@ DB::transaction(function () use (
 }
 
 
-/**
- * Distribución requerida por cantidad de técnicos.
- */
+/** Distribución requerida por cantidad de técnicos.*/
 
 private function distribucionEsperada(int $total, bool $hayDescanso): array
 {
@@ -496,11 +519,7 @@ private function distribucionEsperada(int $total, bool $hayDescanso): array
     return [];
 }
 
-
-/**
- * Clasifica un horario por sus horas reales.
- */
-
+/** Clasifica un horario por sus horas reales.*/
 
 private function clasificarHorario(Horario $horario, Sucursal $sucursal): string
 {
@@ -551,14 +570,26 @@ private function clasificarHorario(Horario $horario, Sucursal $sucursal): string
     return 'invalido';
 }
 
-
-
 private function horaCierreSucursal(Sucursal $sucursal): string
 {
-    return ($sucursal->tipo_horario ?? null) === '07_22'
-        ? '22:00'
-        : '23:00';
+    $tipoHorario = trim((string) $sucursal->tipo_horario);
+
+    if ($tipoHorario === '07_22') {
+        return '22:00';
+    }
+
+    if ($tipoHorario === '07_23') {
+        return '23:00';
+    }
+
+    if ($tipoHorario === '08_20') {
+        return '20:00';
+    }
+
+    // Valor predeterminado para sucursales sin configuración reconocida.
+    return '23:00';
 }
+
 
 private function horariosDisponiblesParaSucursal(Sucursal $sucursal)
 {
@@ -577,13 +608,6 @@ private function horariosDisponiblesParaSucursal(Sucursal $sucursal)
             ) {
                 return false;
             }
-
-        //    if (
-        //        !$this->esSantaRosa2($sucursal)
-        //        && $horario->tipo_turno === 'PARTIDO'
-        //    ) {
-        //        return false;
-        //    }
 
             // Evita ofrecer turnos de cierre que no corresponden al local.
             $salida = substr((string) $horario->hora_salida, 0, 5);
@@ -642,6 +666,7 @@ public function exportarExcel(Request $request)
     );
 }
 
+
 private function datosCalendarioConsulta(Request $request): array
 {
     $inicio = $request->input(
@@ -652,12 +677,37 @@ private function datosCalendarioConsulta(Request $request): array
     $fechaInicio = Carbon::parse($inicio)->startOfWeek(Carbon::MONDAY);
     $fechaFin = $fechaInicio->copy()->endOfWeek(Carbon::SUNDAY);
 
-    $sucursales = Sucursal::orderBy('nombre')->get();
+    $user = auth()->user();
 
-    $sucursalId = $request->input('sucursal_id');
+    /*
+    |--------------------------------------------------------------------------
+    | Determinar las sucursales que puede consultar el usuario
+    |--------------------------------------------------------------------------
+    */
+
+    if ($user->hasRole('Colaborador')) {
+        $trabajador = \App\Models\Trabajador::find($user->trabajador_id);
+
+        if (!$trabajador || !$trabajador->sucursal_id) {
+            abort(403, 'Tu cuenta no tiene una sucursal asignada.');
+        }
+
+        // El colaborador solo puede consultar su propia sucursal.
+        $sucursales = Sucursal::where(
+            'id',
+            $trabajador->sucursal_id
+        )->get();
+
+        $sucursalId = $trabajador->sucursal_id;
+    } else {
+        // El administrador puede consultar todas las sucursales.
+        $sucursales = Sucursal::orderBy('nombre')->get();
+
+        $sucursalId = $request->input('sucursal_id');
+    }
 
     $sucursal = $sucursalId
-        ? Sucursal::find($sucursalId)
+        ? $sucursales->firstWhere('id', (int) $sucursalId)
         : null;
 
     $turnos = collect();
@@ -676,7 +726,7 @@ private function datosCalendarioConsulta(Request $request): array
             ->orderBy('fecha')
             ->get()
             ->groupBy(function ($turno) {
-                return \Carbon\Carbon::parse($turno->fecha)->toDateString();
+                return Carbon::parse($turno->fecha)->toDateString();
             })
             ->map(function ($turnosDelDia) {
                 return $turnosDelDia->sortBy(function ($turno) {
@@ -685,24 +735,37 @@ private function datosCalendarioConsulta(Request $request): array
                         return '99:99';
                     }
 
-                    return substr((string) $turno->horario->hora_ingreso, 0, 5);
+                    return substr(
+                        (string) $turno->horario->hora_ingreso,
+                        0,
+                        5
+                    );
                 })->values();
             });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Días de la semana
+    |--------------------------------------------------------------------------
+    */
+
     $dias = collect();
 
-    for ($fecha = $fechaInicio->copy(); $fecha->lte($fechaFin); $fecha->addDay()) {
+    for (
+        $fecha = $fechaInicio->copy();
+        $fecha->lte($fechaFin);
+        $fecha->addDay()
+    ) {
         $dias->push($fecha->copy());
     }
 
-/*
-|--------------------------------------------------------------------------
-| Sucursales que ya tienen planificación en la semana seleccionada
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Sucursales que tienen planificación en la semana seleccionada
+    |--------------------------------------------------------------------------
+    */
 
-    // Planificaciones registradas en la tabla de control semanal.
     $idsConPlanificacion = PlanificacionSemanal::whereDate(
         'fecha_inicio',
         $fechaInicio->toDateString()
@@ -710,8 +773,6 @@ private function datosCalendarioConsulta(Request $request): array
         ->where('estado', 'registrada')
         ->pluck('sucursal_id');
 
-    // Compatibilidad con semanas que ya tenían asignaciones guardadas
-    // antes de crear la tabla planificaciones_semanales.
     $idsConAsignaciones = AsignacionTurno::whereBetween('fecha', [
         $fechaInicio->toDateString(),
         $fechaFin->toDateString(),
@@ -726,9 +787,7 @@ private function datosCalendarioConsulta(Request $request): array
 
     $sucursalesPlanificadas = $sucursales
         ->whereIn('id', $idsSucursalesPlanificadas)
-    ->values();
-
-
+        ->values();
 
     return compact(
         'sucursales',
@@ -741,6 +800,7 @@ private function datosCalendarioConsulta(Request $request): array
         'sucursalesPlanificadas'
     );
 }
+
 
 private function esSantaRosa2(Sucursal $sucursal): bool
 {

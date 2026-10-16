@@ -68,7 +68,6 @@
                                     id="sucursal_id"
                                     class="form-control">
                                 <option value="">Seleccione un local</option>
-
                                 @foreach ($sucursales as $item)
                                     <option value="{{ $item->id }}"
                                         {{ (string) $sucursalId === (string) $item->id
@@ -532,7 +531,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
     }
 
-    // Clasificar el horario sin modificar la interfaz.
     function tipoHorario(opcion) {
         if (
             !opcion?.value ||
@@ -546,6 +544,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const salida = opcion.dataset.horaSalida;
         const entrada2 = opcion.dataset.horaIngreso2;
         const salida2 = opcion.dataset.horaSalida2;
+
         const tipoTurno = (
             opcion.dataset.tipoTurno || ''
         ).toUpperCase();
@@ -563,8 +562,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return 'manana';
         }
 
-        // Intermedio partido:
-        // 10:00-14:00 y 17:00-21:00.
+        // Intermedio partido: 10:00-14:00 y 17:00-21:00.
         if (
             tipoTurno === 'PARTIDO' &&
             entrada === '10:00' &&
@@ -575,12 +573,27 @@ document.addEventListener('DOMContentLoaded', function () {
             return 'intermedio';
         }
 
-        // Turno de tarde: el horario disponible debe terminar
-        // a las 22:00 o 23:00.
+        // Obtener el cierre configurado en la sucursal seleccionada.
+        const selectorSucursal = document.querySelector(
+            '[name="sucursal_id"]'
+        );
+
+        const sucursalSeleccionada =
+            selectorSucursal?.selectedOptions?.[0];
+
+        const tipoHorarioSucursal =
+            sucursalSeleccionada?.dataset.tipoHorario || '';
+
+        const cierreRequerido =
+            tipoHorarioSucursal === '07_22' ? '22:00' :
+            tipoHorarioSucursal === '08_20' ? '20:00' :
+            '23:00';
+
+        // Tarde: debe coincidir con el cierre real de la sucursal.
         if (
             tipoTurno === 'CONTINUO' &&
             ['14:00', '15:00'].includes(entrada) &&
-            ['22:00', '23:00'].includes(salida)
+            salida === cierreRequerido
         ) {
             return 'tarde';
         }
@@ -722,7 +735,7 @@ formulario.querySelectorAll('.turno-select').forEach(select => {
                 }
             } else if (total === 4) {
                 if (descansan.length === 1) {
-                    roles.push('manana', 'tarde', 'tarde');
+                    roles.push('manana', 'intermedio', 'tarde');
                 } else {
                     roles.push(
                         'manana', 'manana', 'tarde', 'tarde'

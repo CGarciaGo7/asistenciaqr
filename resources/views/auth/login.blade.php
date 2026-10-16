@@ -617,62 +617,48 @@
                 @csrf
 
 
-                <!-- EMAIL -->
+                <!-- USUARIO O CORREO -->
 
                 <div class="form-group">
 
                     <label
                         for="email"
-                        class="form-label">
-
-                        Correo electrónico
-
+                        class="form-label"> Usuario o correo electrónico
                     </label>
 
-                    <div class="input-wrapper">
+                        <div class="input-wrapper">
+                            <svg
+                                class="input-icon"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor">
 
-                        <svg
-                            class="input-icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor">
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
 
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-
-                        </svg>
-
-                        <input
-                            id="email"
-                            class="form-input"
-                            type="email"
-                            name="email"
-                            value="{{ old('email') }}"
-                            placeholder="Ingrese su correo electrónico"
-                            required
-                            autofocus
-                            autocomplete="username">
-
-                    </div>
-
-
-                    @if ($errors->has('email'))
-
-                        <div class="error-message">
-
-                            {{ $errors->first('email') }}
-
+                            <input
+                                id="login"
+                                class="form-input"
+                                type="text"
+                                name="login"
+                                value="{{ old('login') }}"
+                                placeholder="Ingrese su usuario o correo"
+                                required
+                                autofocus
+                                autocomplete="username">
                         </div>
 
-                    @endif
-
-                </div>
-
-
+                        @if ($errors->has('login'))
+                            <div class="error-message">
+                                {{ $errors->first('login') }}
+                            </div>
+                        @endif
+                    </div>
                 <!-- PASSWORD -->
 
                 <div class="form-group">
